@@ -1,8 +1,10 @@
 import torch
+import torchvision
 import torch.nn as nn
 from torch.autograd import Variable
 import math
 import torch.nn.functional as F
+
 
 class Hopenet(nn.Module):
     # Hopenet with 3 output layers for yaw, pitch and roll
@@ -70,6 +72,12 @@ class Hopenet(nn.Module):
         pre_roll = self.fc_roll(x)
 
         return pre_yaw, pre_pitch, pre_roll
+
+
+class HopenetProxy(Hopenet):
+    def __init__(self):
+        super(HopenetProxy, self).__init__(torchvision.models.resnet.Bottleneck, [3, 4, 6, 3], 66)
+
 
 class ResNet(nn.Module):
     # ResNet for regression of 3 Euler angles.

@@ -4,3 +4,5 @@ data/*
 output/*
 *.jpg
 *.png
+.idea/
+__pycache__/
