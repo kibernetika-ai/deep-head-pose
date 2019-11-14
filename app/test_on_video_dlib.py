@@ -58,27 +58,30 @@ if __name__ == '__main__':
     # Dlib face detection model
     cnn_face_detector = dlib.cnn_face_detection_model_v1(args.face_model)
 
-    print 'Loading snapshot.'
+    print( 'Loading snapshot.')
     # Load snapshot
-    saved_state_dict = torch.load(snapshot_path)
+    saved_state_dict = torch.load(snapshot_path, map_location=torch.device('cpu'))
     model.load_state_dict(saved_state_dict)
 
-    print 'Loading data.'
+    print( 'Loading data.')
 
     transformations = transforms.Compose([transforms.Scale(224),
     transforms.CenterCrop(224), transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-    model.cuda(gpu)
+    if torch.cuda.is_available():
+        model.cuda(gpu)
 
-    print 'Ready to test network.'
+    print( 'Ready to test network.')
 
     # Test the Model
     model.eval()  # Change model to 'eval' mode (BN uses moving mean/var).
     total = 0
 
-    idx_tensor = [idx for idx in xrange(66)]
-    idx_tensor = torch.FloatTensor(idx_tensor).cuda(gpu)
+    idx_tensor = [idx for idx in range(66)]
+    idx_tensor = torch.FloatTensor(idx_tensor)
+    if torch.cuda.is_available():
+        idx_tensor = idx_tensor.cuda(gpu)
 
     video = cv2.VideoCapture(video_path)
 
@@ -103,7 +106,7 @@ if __name__ == '__main__':
     frame_num = 1
 
     while frame_num <= args.n_frames:
-        print frame_num
+        print( frame_num)
 
         ret,frame = video.read()
         if ret == False:
@@ -132,17 +135,21 @@ if __name__ == '__main__':
                 x_min = max(x_min, 0); y_min = max(y_min, 0)
                 x_max = min(frame.shape[1], x_max); y_max = min(frame.shape[0], y_max)
                 # Crop image
-                img = cv2_frame[y_min:y_max,x_min:x_max]
+                img = cv2_frame[int(y_min):int(y_max),int(x_min):int(x_max)]
                 img = Image.fromarray(img)
 
                 # Transform
                 img = transformations(img)
                 img_shape = img.size()
                 img = img.view(1, img_shape[0], img_shape[1], img_shape[2])
-                img = Variable(img).cuda(gpu)
+                if torch.cuda.is_available():
+                    img = Variable(img).cuda(gpu)
+                else:
+                    img = Variable(img)
 
                 yaw, pitch, roll = model(img)
 
+                __import__('ipdb').set_trace()
                 yaw_predicted = F.softmax(yaw)
                 pitch_predicted = F.softmax(pitch)
                 roll_predicted = F.softmax(roll)
@@ -151,7 +158,7 @@ if __name__ == '__main__':
                 pitch_predicted = torch.sum(pitch_predicted.data[0] * idx_tensor) * 3 - 99
                 roll_predicted = torch.sum(roll_predicted.data[0] * idx_tensor) * 3 - 99
 
-                # Print new frame with cube and axis
+                # print( new frame with cube and axis)
                 txt_out.write(str(frame_num) + ' %f %f %f\n' % (yaw_predicted, pitch_predicted, roll_predicted))
                 # utils.plot_pose_cube(frame, yaw_predicted, pitch_predicted, roll_predicted, (x_min + x_max) / 2, (y_min + y_max) / 2, size = bbox_width)
                 utils.draw_axis(frame, yaw_predicted, pitch_predicted, roll_predicted, tdx = (x_min + x_max) / 2, tdy= (y_min + y_max) / 2, size = bbox_height/2)
