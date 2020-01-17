@@ -41,6 +41,7 @@ def process(inputs, ctx, **kwargs):
         yaw = np.sum(special.softmax(outputs['0'][0]) * idx_tensor) * 3 - 99
         pitch = np.sum(special.softmax(outputs['1'][0]) * idx_tensor) * 3 - 99
         roll = np.sum(special.softmax(outputs['2'][0]) * idx_tensor) * 3 - 99
+        cv2.putText(image, f'{yaw:0.2f}, {pitch:0.2f}, {roll:0.2f}', (box[0], box[1]), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 250, 0), 2, cv2.LINE_AA)
         draw_axis(
             image,
             yaw, pitch, roll,
